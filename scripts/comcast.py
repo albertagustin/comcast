@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 from __future__ import print_function
+from prometheus_client import CollectorRegistry, Counter, Gauge, push_to_gateway
 
 import json
 import logging
@@ -7,6 +8,7 @@ import os
 import re
 import requests
 import time
+import traceback
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -16,6 +18,10 @@ session = requests.Session()
 
 username = os.environ['COMCAST_USERNAME']
 password = os.environ['COMCAST_PASSWORD']
+
+# push_gateway config
+push_gateway_host = os.environ.get('PUSH_GATEWAY_HOST', None)
+push_gateway_port = os.environ.get('PUSH_GATEWAY_PORT', None)
 
 logger.debug("Finding req_id for login...")
 res = session.get('https://login.comcast.net/login?r=comcast.net&s=oauth&continue=https%3A%2F%2Flogin.comcast.net%2Foauth%2Fauthorize%3Fclient_id%3Dmy-account-web%26redirect_uri%3Dhttps%253A%252F%252Fcustomer.xfinity.com%252Foauth%252Fcallback%26response_type%3Dcode%26state%3D%2523%252Fdevices%26response%3D1&client_id=my-account-web')
@@ -56,7 +62,20 @@ try:
         'total': js['usageMonths'][-1]['allowableUsage'],
         'unit': js['usageMonths'][-1]['unitOfMeasure'],
     }
-    print(json.dumps(out))
+    # print(json.dumps(out))
+
+    # send to push-gateway
+    if push_gateway_host and push_gateway_port:
+        try:
+            registry = CollectorRegistry()
+            g = Gauge('data_usage', 'Data Usage', registry=registry)
+            g.set(out.get('used', 0))
+            push_to_gateway('%s:%s' % (push_gateway_host, push_gateway_port),
+                            job='comcast_data_usage', registry=registry)
+            logger.debug("Successfully sent value: %s to push-gateway" % out.get('used', 0))
+        except Exception:
+            logger.error("Failed to send to push-gateway with error: %s" % traceback.format_exc())
+
 except Exception:
     logger.debug("Preloader HTML...")
     res = session.get('https://customer.xfinity.com/Secure/Preloading/?backTo=%2fMyServices%2fInternet%2fUsageMeter%2f')

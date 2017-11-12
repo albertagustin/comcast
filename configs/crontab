@@ -1,0 +1,2 @@
+# comcast data usage
+0,30 * * * *  python3 /scripts/comcast.py
