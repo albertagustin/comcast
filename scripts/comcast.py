@@ -72,7 +72,7 @@ try:
             g.set(out.get('used', 0))
             push_to_gateway('%s:%s' % (push_gateway_host, push_gateway_port),
                             job='comcast_data_usage', registry=registry)
-            logger.debug("Successfully sent value: %s to push-gateway" % out.get('used', 0))
+            logger.debug("Successfully sent value: %sGB to push-gateway" % out.get('used', 0))
         except Exception:
             logger.error("Failed to send to push-gateway with error: %s" % traceback.format_exc())
 

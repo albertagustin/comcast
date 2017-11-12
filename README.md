@@ -33,6 +33,6 @@ docker logs -f container_id
 
 >>
 ...
-time="2017-11-12T06:10:02Z" level=info msg="DEBUG:__main__:Successfully sent value: 391.0 to push-gateway" channel=stderr iteration=19 job.command="python3 /scripts/comcast.py" job.position=0job.schedule="* * * * *"
-time="2017-11-12T06:10:02Z" level=info msg="job succeeded" iteration=19 job.command="python3 /scripts/comcast.py" job.position=0 job.schedule="* * * * *"
+time="2017-11-12T06:10:02Z" level=info msg="DEBUG:__main__:Successfully sent value: 391.0GB to push-gateway" channel=stderr iteration=19 job.command="python3 /scripts/comcast.py" job.position=0job.schedule="* * * * *"
+time="2017-11-12T06:10:02Z" level=info msg="job succeeded" iteration=1 job.command="python3 /scripts/comcast.py" job.position=0 job.schedule="0,30 * * * *"
 ```
