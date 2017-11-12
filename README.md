@@ -1,5 +1,4 @@
 # docker-comcast-data-usage
--------
 
 Docker container to pull data usage from Comcast every 30 mins and sends results to a Prometheus push gateway.  The data can then be scrapped from the push gateway by Prometheus and shown via Grafana.
 
@@ -7,7 +6,6 @@ The container pulls data from comcast using https://github.com/lachesis/comcast 
 
 
 ## Usage
------
 
 1. Clone and build the image
 ```bash
