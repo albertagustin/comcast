@@ -24,7 +24,8 @@ push_gateway_host = os.environ.get('PUSH_GATEWAY_HOST', None)
 push_gateway_port = os.environ.get('PUSH_GATEWAY_PORT', None)
 
 logger.debug("Finding req_id for login...")
-res = session.get('https://login.comcast.net/login?r=comcast.net&s=oauth&continue=https%3A%2F%2Flogin.comcast.net%2Foauth%2Fauthorize%3Fclient_id%3Dmy-account-web%26redirect_uri%3Dhttps%253A%252F%252Fcustomer.xfinity.com%252Foauth%252Fcallback%26response_type%3Dcode%26state%3D%2523%252Fdevices%26response%3D1&client_id=my-account-web')
+res = session.get('https://customer.xfinity.com/oauth/force_connect/?continue=%23%2Fdevices')
+#res = session.get('https://login.comcast.net/login?r=comcast.net&s=oauth&continue=https%3A%2F%2Flogin.comcast.net%2Foauth%2Fauthorize%3Fclient_id%3Dmy-account-web%26redirect_uri%3Dhttps%253A%252F%252Fcustomer.xfinity.com%252Foauth%252Fcallback%26response_type%3Dcode%26state%3D%2523%252Fdevices%26response%3D1&client_id=my-account-web')
 assert res.status_code == 200
 m = re.search(r'<input type="hidden" name="reqId" value="(.*?)">', res.text)
 req_id = m.group(1)
@@ -36,23 +37,22 @@ data = {
     'reqId': req_id,
     'deviceAuthn': 'false',
     's': 'oauth',
-    'forceAuthn': '0',
+    'forceAuthn': '1',
     'r': 'comcast.net',
     'ipAddrAuthn': 'false',
-    'continue': 'https://login.comcast.net/oauth/authorize?client_id=my-account-web&redirect_uri=https%3A%2F%2Fcustomer.xfinity.com%2Foauth%2Fcallback&response_type=code&state=%23%2Fdevices&response=1',
+    'continue': 'https://oauth.xfinity.com/oauth/authorize?client_id=my-account-web&prompt=login&redirect_uri=https%3A%2F%2Fcustomer.xfinity.com%2Foauth%2Fcallback&response_type=code&state=%23%2Fdevices&response=1',
     'passive': 'false',
     'client_id': 'my-account-web',
     'lang': 'en',
 }
 
 logger.debug("Posting to login...")
-res = session.post('https://login.comcast.net/login', data=data)
+res = session.post('https://login.xfinity.com/login', data=data)
 assert res.status_code == 200
 
 try:
     logger.debug("Fetching internet usage AJAX...")
-    res = session.get(
-        'https://customer.xfinity.com/apis/services/internet/usage')
+    res = session.get('https://customer.xfinity.com/apis/services/internet/usage')
     assert res.status_code == 200
 
     js = json.loads(res.text)
@@ -70,20 +70,16 @@ try:
         try:
             registry = CollectorRegistry()
             g = Gauge('data_usage', 'Data Usage', registry=registry)
-            
             g.set(out.get('used', 0))
             push_to_gateway('%s:%s' % (push_gateway_host, push_gateway_port),
                             job='comcast_data_usage', registry=registry)
-            logger.debug(
-                "Successfully sent value: %sGB to push-gateway" % out.get('used', 0))
+            logger.debug("Successfully sent value: %sGB to push-gateway" % out.get('used', 0))
         except Exception:
-            logger.error("Failed to send to push-gateway with error: %s" %
-                         traceback.format_exc())
+            logger.error("Failed to send to push-gateway with error: %s" % traceback.format_exc())
 
 except Exception:
     logger.debug("Preloader HTML...")
-    res = session.get(
-        'https://customer.xfinity.com/Secure/Preloading/?backTo=%2fMyServices%2fInternet%2fUsageMeter%2f')
+    res = session.get('https://customer.xfinity.com/Secure/Preloading/?backTo=%2fMyServices%2fInternet%2fUsageMeter%2f')
     assert res.status_code == 200
 
     logger.debug("Preloader AJAX...")
@@ -94,17 +90,16 @@ except Exception:
     time.sleep(5)
 
     logger.debug("Fetching internet usage HTML...")
-    res = session.get(
-        'https://customer.xfinity.com/MyServices/Internet/UsageMeter/')
+    res = session.get('https://customer.xfinity.com/MyServices/Internet/UsageMeter/')
     assert res.status_code == 200
     html = res.text
 
     # Example HTML:
     #    <div class="cui-panel-body">
-    #        <!-- data-options:
-    #                unit (string) - fills in labels; example: GB, MB, miles;
+    #        <!-- data-options: 
+    #                unit (string) - fills in labels; example: GB, MB, miles; 
     #                max (number, optional) - the 100% number of the bar
-    #                increment (number, optional) - the number between grid lines
+    #                increment (number, optional) - the number between grid lines 
     #                -->
     #        <span class="cui-usage-label"><p>Home Internet Usage</p></span>
     #        <div data-component="usage-meter"
@@ -136,19 +131,18 @@ except Exception:
     m = re.search(r'<div class="cui-usage-bar" data-plan="(\d+)">', html)
     if m:
         total = int(m.group(1))
+        
+logger.debug("Fetching internet usage AJAX...")
+res = session.get('https://customer.xfinity.com/apis/services/internet/usage')
+#logger.debug("Resp: %r", res.text)
+assert res.status_code == 200
 
-    unit = None
-    m = re.search(
-        r'<div data-component="usage-meter"\s*data-options="([^"]*)"', html)
-    if m:
-        opts = m.group(1)
-        opts = re.sub(r'\s+', '', opts)  # remove whitespace
-        m = re.search(r'unit:(\w+);', opts)
-        if m:
-            unit = m.group(1)
+js = json.loads(res.text)
 
-    print(json.dumps({
-        'used': used,
-        'total': total,
-        'unit': unit,
-    }))
+out = {
+    'raw': js,
+    'used': js['usageMonths'][-1]['homeUsage'],
+    'total': js['usageMonths'][-1]['allowableUsage'],
+    'unit': js['usageMonths'][-1]['unitOfMeasure'],
+}
+print(json.dumps(out))

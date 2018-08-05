@@ -35,4 +35,17 @@ docker logs -f container_id
 ...
 time="2017-11-12T06:17:02Z" level=info msg="DEBUG:__main__:Successfully sent value: 391.0GB to push-gateway" channel=stderr iteration=0 job.command="python3 /scripts/comcast.py" job.position=0 job.schedule="0,30 * * * *"
 time="2017-11-12T06:17:02Z" level=info msg="job succeeded" iteration=0 job.command="python3 /scripts/comcast.py" job.position=0 job.schedule="0,30 * * * *"
+
+```
+PGE
+---
+I also like tracking my home power usage. The PGE script allows that.
+
+It requires `requests` and optionally `dateutil` (to allow the script to
+automatically break long time intervals into multiple requests).
+
+Usage
+-----
+```bash
+PGE_USERNAME=bob PGE_PASSWORD=hope python3 pge.py
 ```
